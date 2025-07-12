@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     
     device: str = Field(default="auto", env="DEVICE")
     
+    # CPU Optimization
+    omp_num_threads: Optional[int] = Field(default=None, env="OMP_NUM_THREADS")
+    torch_num_threads: Optional[int] = Field(default=None, env="TORCH_NUM_THREADS")
+    
     use_mock_service: bool = Field(default=False, env="USE_MOCK_SERVICE")
     
     class Config:
@@ -51,8 +55,14 @@ class Settings(BaseSettings):
         if self.device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             
+        # Apply CPU optimizations
+        if self.device == "cpu":
+            if self.omp_num_threads:
+                torch.set_num_threads(self.omp_num_threads)
+                print(f"Set PyTorch threads to {self.omp_num_threads}")
+            
         if not torch.cuda.is_available() and not self.use_mock_service:
-            print("Warning: CUDA not available. Consider setting USE_MOCK_SERVICE=true for testing.")
+            print("Warning: CUDA not available. Using CPU mode with optimizations.")
 
 
 settings = Settings()
