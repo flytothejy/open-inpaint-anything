@@ -69,8 +69,8 @@ def install_dependencies():
     commands = [
         ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121", 
          "Installing PyTorch with CUDA 12.1"),
-        ("pip install -r requirements/colab.txt", 
-         "Installing Colab requirements"),
+        ("pip install -r requirements/base.txt", 
+         "Installing base requirements"),
         ("pip install 'numpy==1.24.4' 'opencv-python==4.9.0.80'", 
          "Installing compatible NumPy and OpenCV versions"),
         ("pip install git+https://github.com/facebookresearch/segment-anything.git", 
