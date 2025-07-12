@@ -66,6 +66,9 @@ def install_dependencies():
     """Install all required dependencies"""
     print("\n📦 Installing dependencies...")
     
+    # Change to project directory first
+    os.chdir('open-inpaint-anything')
+    
     commands = [
         ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121", 
          "Installing PyTorch with CUDA 12.1"),
@@ -104,13 +107,14 @@ def clone_repository():
             print("   2. Verify repository is public")
             return False
     
-    # Change to project directory
-    os.chdir('open-inpaint-anything')
     return True
 
 def create_colab_env():
     """Create Colab-optimized environment file"""
     print("\n⚙️  Creating Colab environment configuration...")
+    
+    # Change to project directory
+    os.chdir('open-inpaint-anything')
     
     env_content = """# Model Configuration (GPU optimized for Colab)
 SAM_MODEL_TYPE=vit_b
@@ -151,6 +155,9 @@ def download_models():
     """Download AI models"""
     print("\n🤖 Downloading AI models...")
     
+    # Change to project directory
+    os.chdir('open-inpaint-anything')
+    
     # Make scripts executable
     run_command("chmod +x scripts/download_models.sh", "Making download script executable")
     
@@ -170,12 +177,18 @@ def verify_setup():
     """Verify the setup"""
     print("\n🔍 Verifying setup...")
     
+    # Change to project directory
+    os.chdir('open-inpaint-anything')
+    
     success, _, _ = run_command("python scripts/verify_models.py", "Verifying models")
     return success
 
 def start_server_test():
     """Start server for testing"""
     print("\n🚀 Starting FastAPI server test...")
+    
+    # Change to project directory
+    os.chdir('open-inpaint-anything')
     
     # Start server in background
     import threading
