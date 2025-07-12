@@ -69,14 +69,10 @@ def install_dependencies():
     commands = [
         ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121", 
          "Installing PyTorch with CUDA 12.1"),
-        ("pip install fastapi uvicorn python-multipart aiofiles", 
-         "Installing FastAPI"),
-        ("pip install diffusers transformers accelerate", 
-         "Installing Diffusers"),
+        ("pip install -r requirements/colab.txt", 
+         "Installing Colab requirements"),
         ("pip install 'numpy==1.24.4' 'opencv-python==4.9.0.80'", 
-         "Installing NumPy and OpenCV"),
-        ("pip install pydantic-settings pillow omegaconf", 
-         "Installing additional dependencies"),
+         "Installing compatible NumPy and OpenCV versions"),
         ("pip install git+https://github.com/facebookresearch/segment-anything.git", 
          "Installing Segment Anything"),
     ]
