@@ -1,6 +1,9 @@
+# PyTorch packages with compatible CUDA versions
 torch>=2.0.0
 torchvision>=0.15.0
 torchaudio>=2.0.0
+# For CUDA environments, install with:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 transformers>=4.20.0
 diffusers>=0.15.0
 fastapi>=0.104.0

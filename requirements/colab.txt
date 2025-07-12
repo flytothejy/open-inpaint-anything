@@ -1,0 +1,14 @@
+# Colab-specific requirements
+# CUDA-compatible PyTorch installation for Google Colab
+
+# Install PyTorch with CUDA 12.1 support (compatible versions)
+--index-url https://download.pytorch.org/whl/cu121
+torch>=2.0.0
+torchvision>=0.15.0  
+torchaudio>=2.0.0
+
+# Base requirements
+-r base.txt
+
+# Additional Colab optimizations
+ipywidgets>=8.0.0

@@ -67,8 +67,8 @@ def install_dependencies():
     print("\n📦 Installing dependencies...")
     
     commands = [
-        ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118", 
-         "Installing PyTorch with CUDA"),
+        ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121", 
+         "Installing PyTorch with CUDA 12.1"),
         ("pip install fastapi uvicorn python-multipart aiofiles", 
          "Installing FastAPI"),
         ("pip install diffusers transformers accelerate", 
