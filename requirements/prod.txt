@@ -1,0 +1,5 @@
+-r base.txt
+gunicorn>=21.0.0
+redis>=4.0.0
+prometheus-client>=0.17.0
+structlog>=23.0.0
