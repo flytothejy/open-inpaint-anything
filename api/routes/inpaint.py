@@ -10,7 +10,12 @@ from api.models.requests import (
     RemoveImageRequest, FillImageRequest, ReplaceImageRequest
 )
 from api.models.responses import InpaintResponse, ErrorResponse
-from api.services.inpaint_service import inpaint_service
+from config.settings import settings
+
+if settings.use_mock_service:
+    from api.services.mock_inpaint_service import mock_inpaint_service as inpaint_service
+else:
+    from api.services.inpaint_service import inpaint_service
 from utils.image_utils import (
     decode_base64_image, encode_image_to_base64, load_image_from_file
 )

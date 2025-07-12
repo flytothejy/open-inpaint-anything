@@ -5,7 +5,6 @@ import logging
 import asyncio
 
 from config.settings import settings
-from api.services.model_loader import model_loader
 from api.routes import health, inpaint
 from api.middleware.cors import setup_cors
 from api.middleware.logging import setup_logging, LoggingMiddleware
@@ -24,8 +23,13 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Device: {settings.device}")
     
-    if not settings.use_mock_service:
+    if settings.use_mock_service:
+        logger.info("Using mock service (models not loaded)")
+    else:
         try:
+            # Import model loader only when needed
+            from api.services.model_loader import model_loader
+            
             # Load models on startup
             logger.info("Loading AI models...")
             await model_loader.load_all_models()
@@ -36,8 +40,6 @@ async def lifespan(app: FastAPI):
                 raise
             else:
                 logger.warning("Continuing without models (development mode)")
-    else:
-        logger.info("Using mock service (models not loaded)")
     
     yield
     

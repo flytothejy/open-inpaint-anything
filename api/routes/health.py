@@ -5,7 +5,7 @@ import psutil
 import logging
 
 from api.models.responses import HealthResponse, ModelStatusResponse
-from api.services.model_loader import model_loader
+# Import model_loader conditionally
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -19,15 +19,30 @@ _startup_time = time.time()
 async def health_check():
     """Basic health check endpoint"""
     try:
-        # Check if models are loaded
-        models_status = {
-            "sam": model_loader.get_sam_predictor() is not None,
-            "lama": model_loader.get_lama_model()[0] is not None,
-            "stable_diffusion": model_loader.get_sd_pipeline() is not None,
-        }
-        
-        # Get memory usage
-        memory_info = model_loader.get_memory_usage()
+        if settings.use_mock_service:
+            # Mock service status
+            models_status = {
+                "sam": True,
+                "lama": True,
+                "stable_diffusion": True,
+            }
+            device = "mock"
+            memory_info = {
+                "device": "mock",
+                "allocated": 0,
+                "cached": 0,
+                "max_allocated": 0,
+            }
+        else:
+            from api.services.model_loader import model_loader
+            # Check if models are loaded
+            models_status = {
+                "sam": model_loader.get_sam_predictor() is not None,
+                "lama": model_loader.get_lama_model()[0] is not None,
+                "stable_diffusion": model_loader.get_sd_pipeline() is not None,
+            }
+            device = model_loader.get_device()
+            memory_info = model_loader.get_memory_usage()
         
         # Add system memory info
         system_memory = psutil.virtual_memory()
@@ -46,7 +61,7 @@ async def health_check():
             message="Service is running",
             status=status,
             models_loaded=models_status,
-            device=model_loader.get_device(),
+            device=device,
             memory_usage=memory_info,
             uptime=uptime
         )
@@ -60,24 +75,36 @@ async def health_check():
 async def readiness_check():
     """Readiness check - returns 200 only if all models are loaded"""
     try:
-        if not model_loader.is_ready():
-            raise HTTPException(
-                status_code=503, 
-                detail="Service not ready - models still loading"
-            )
-        
-        models_status = {
-            "sam": True,
-            "lama": True,
-            "stable_diffusion": True,
-        }
+        if settings.use_mock_service:
+            models_status = {
+                "sam": True,
+                "lama": True,
+                "stable_diffusion": True,
+            }
+            device = "mock"
+            memory_info = {"device": "mock", "allocated": 0, "cached": 0}
+        else:
+            from api.services.model_loader import model_loader
+            if not model_loader.is_ready():
+                raise HTTPException(
+                    status_code=503, 
+                    detail="Service not ready - models still loading"
+                )
+            
+            models_status = {
+                "sam": True,
+                "lama": True,
+                "stable_diffusion": True,
+            }
+            device = model_loader.get_device()
+            memory_info = model_loader.get_memory_usage()
         
         return HealthResponse(
             message="Service is ready",
             status="ready",
             models_loaded=models_status,
-            device=model_loader.get_device(),
-            memory_usage=model_loader.get_memory_usage(),
+            device=device,
+            memory_usage=memory_info,
             uptime=time.time() - _startup_time
         )
         
@@ -92,30 +119,53 @@ async def readiness_check():
 async def model_status():
     """Detailed model status endpoint"""
     try:
-        sam_predictor = model_loader.get_sam_predictor()
-        lama_model, lama_config = model_loader.get_lama_model()
-        sd_pipeline = model_loader.get_sd_pipeline()
-        
-        models_info = {
-            "sam": {
-                "loaded": sam_predictor is not None,
-                "model_type": settings.sam_model_type if sam_predictor else None,
-                "checkpoint_path": settings.sam_checkpoint_path if sam_predictor else None,
-                "device": model_loader.get_device() if sam_predictor else None
-            },
-            "lama": {
-                "loaded": lama_model is not None,
-                "config_path": settings.lama_config_path if lama_model else None,
-                "checkpoint_path": settings.lama_checkpoint_path if lama_model else None,
-                "device": model_loader.get_device() if lama_model else None
-            },
-            "stable_diffusion": {
-                "loaded": sd_pipeline is not None,
-                "model_name": settings.sd_model_name if sd_pipeline else None,
-                "device": model_loader.get_device() if sd_pipeline else None,
-                "torch_dtype": str(sd_pipeline.dtype) if sd_pipeline else None
+        if settings.use_mock_service:
+            models_info = {
+                "sam": {
+                    "loaded": True,
+                    "model_type": "mock",
+                    "checkpoint_path": "mock",
+                    "device": "mock"
+                },
+                "lama": {
+                    "loaded": True,
+                    "config_path": "mock",
+                    "checkpoint_path": "mock",
+                    "device": "mock"
+                },
+                "stable_diffusion": {
+                    "loaded": True,
+                    "model_name": "mock",
+                    "device": "mock",
+                    "torch_dtype": "mock"
+                }
             }
-        }
+        else:
+            from api.services.model_loader import model_loader
+            sam_predictor = model_loader.get_sam_predictor()
+            lama_model, lama_config = model_loader.get_lama_model()
+            sd_pipeline = model_loader.get_sd_pipeline()
+            
+            models_info = {
+                "sam": {
+                    "loaded": sam_predictor is not None,
+                    "model_type": settings.sam_model_type if sam_predictor else None,
+                    "checkpoint_path": settings.sam_checkpoint_path if sam_predictor else None,
+                    "device": model_loader.get_device() if sam_predictor else None
+                },
+                "lama": {
+                    "loaded": lama_model is not None,
+                    "config_path": settings.lama_config_path if lama_model else None,
+                    "checkpoint_path": settings.lama_checkpoint_path if lama_model else None,
+                    "device": model_loader.get_device() if lama_model else None
+                },
+                "stable_diffusion": {
+                    "loaded": sd_pipeline is not None,
+                    "model_name": settings.sd_model_name if sd_pipeline else None,
+                    "device": model_loader.get_device() if sd_pipeline else None,
+                    "torch_dtype": str(sd_pipeline.dtype) if sd_pipeline else None
+                }
+            }
         
         return ModelStatusResponse(
             message="Model status retrieved",

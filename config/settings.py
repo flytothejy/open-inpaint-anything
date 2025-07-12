@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List, Optional
 import torch
 from pathlib import Path
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
     max_image_size: int = Field(default=2048, env="MAX_IMAGE_SIZE")
     max_file_size: int = Field(default=10485760, env="MAX_FILE_SIZE")  # 10MB
     
-    allowed_origins: List[str] = Field(default=["*"], env="ALLOWED_ORIGINS")
+    allowed_origins: str = Field(default="*", env="ALLOWED_ORIGINS")
     
     device: str = Field(default="auto", env="DEVICE")
     
