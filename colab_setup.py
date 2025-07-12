@@ -248,12 +248,12 @@ def main():
     if not check_gpu():
         return False
     
-    # Step 2: Install dependencies
-    if not install_dependencies():
+    # Step 2: Clone repository
+    if not clone_repository():
         return False
     
-    # Step 3: Clone repository
-    if not clone_repository():
+    # Step 3: Install dependencies
+    if not install_dependencies():
         return False
     
     # Step 4: Create environment
