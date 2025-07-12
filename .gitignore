@@ -60,7 +60,7 @@ pretrained_models/
 *.bin
 *.safetensors
 checkpoints/
-models/
+# models/ - commented out to allow api/models/ directory
 data/
 datasets/
 
