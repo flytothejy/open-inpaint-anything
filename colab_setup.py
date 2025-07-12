@@ -10,15 +10,21 @@ import os
 import time
 import requests
 import json
+import threading
 from pathlib import Path
 
-def run_command(command, description=""):
+# Global configuration
+PROJECT_NAME = "open-inpaint-anything"
+REPO_URL = "https://github.com/flytothejy/open-inpaint-anything.git"
+PROJECT_DIR = None
+
+def run_command(command, description="", cwd=None):
     """Run shell command and print status"""
     print(f"🔄 {description}")
     print(f"   Command: {command}")
     
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, cwd=cwd)
         if result.returncode == 0:
             print(f"✅ {description} - Success")
             if result.stdout.strip():
@@ -32,21 +38,22 @@ def run_command(command, description=""):
         return False, "", str(e)
 
 def check_gpu():
-    """Check GPU availability"""
-    print("🔍 Checking GPU availability...")
+    """Check if GPU is available"""
+    print("\n🔍 Checking GPU availability...")
     
-    success, stdout, stderr = run_command("nvidia-smi", "GPU status check")
-    if success:
-        print("✅ GPU detected!")
-        # Extract GPU info
-        lines = stdout.split('\n')
-        for line in lines:
-            if 'Tesla' in line or 'RTX' in line or 'GTX' in line:
-                print(f"   GPU: {line.strip()}")
-                break
-    else:
-        print("❌ No GPU detected. Make sure Runtime > Change runtime type > GPU is selected")
+    # Check NVIDIA GPU
+    success, output, _ = run_command("nvidia-smi", "GPU status check")
+    if not success:
+        print("❌ No GPU detected!")
         return False
+    
+    print("✅ GPU detected!")
+    # Extract GPU info from nvidia-smi output
+    lines = output.split('\n')
+    for line in lines:
+        if 'Tesla' in line or 'RTX' in line or 'GTX' in line or 'V100' in line or 'A100' in line:
+            print(f"   GPU: {line.strip()}")
+            break
     
     # Check PyTorch CUDA
     try:
@@ -62,12 +69,39 @@ def check_gpu():
         print("   PyTorch not installed yet")
         return True  # GPU is available, PyTorch will be installed later
 
+def clone_repository():
+    """Clone the repository"""
+    global PROJECT_DIR
+    print("\n📁 Setting up project...")
+    
+    # Check if already cloned
+    if os.path.exists(PROJECT_NAME):
+        print("✅ Repository already exists")
+        success, _, _ = run_command("git pull", "Updating repository", cwd=PROJECT_NAME)
+        if not success:
+            print("⚠️  Git pull failed, continuing with existing files")
+    else:
+        # Clone repository
+        success, _, _ = run_command(f"git clone {REPO_URL}", "Cloning repository")
+        if not success:
+            print("❌ Failed to clone repository")
+            print("📝 Manual setup required:")
+            print("   1. Check repository URL")
+            print("   2. Verify repository is public")
+            return False
+    
+    # Set project directory
+    PROJECT_DIR = os.path.abspath(PROJECT_NAME)
+    print(f"📂 Project directory: {PROJECT_DIR}")
+    return True
+
 def install_dependencies():
     """Install all required dependencies"""
     print("\n📦 Installing dependencies...")
     
-    # Change to project directory first
-    os.chdir('open-inpaint-anything')
+    if not PROJECT_DIR:
+        print("❌ Project directory not set!")
+        return False
     
     commands = [
         ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121", 
@@ -81,30 +115,10 @@ def install_dependencies():
     ]
     
     for command, description in commands:
-        success, _, _ = run_command(command, description)
+        cwd = PROJECT_DIR if "requirements/" in command else None
+        success, _, _ = run_command(command, description, cwd=cwd)
         if not success:
             print(f"⚠️  Failed to install: {description}")
-            return False
-    
-    return True
-
-def clone_repository():
-    """Clone the repository"""
-    print("\n📁 Setting up project...")
-    
-    # Check if already cloned
-    if os.path.exists('open-inpaint-anything'):
-        print("✅ Repository already exists")
-        run_command("cd open-inpaint-anything && git pull", "Updating repository")
-    else:
-        # Clone from our working repository with API implementation
-        repo_url = "https://github.com/flytothejy/open-inpaint-anything.git"
-        success, _, _ = run_command(f"git clone {repo_url}", "Cloning repository")
-        if not success:
-            print("❌ Failed to clone repository")
-            print("📝 Manual setup required:")
-            print("   1. Check repository URL")
-            print("   2. Verify repository is public")
             return False
     
     return True
@@ -113,60 +127,61 @@ def create_colab_env():
     """Create Colab-optimized environment file"""
     print("\n⚙️  Creating Colab environment configuration...")
     
-    # Change to project directory
-    os.chdir('open-inpaint-anything')
+    if not PROJECT_DIR:
+        print("❌ Project directory not set!")
+        return False
     
     env_content = """# Model Configuration (GPU optimized for Colab)
 SAM_MODEL_TYPE=vit_b
 SAM_CHECKPOINT_PATH=./pretrained_models/sam_vit_b_01ec64.pth
 LAMA_CONFIG_PATH=./lama/configs/prediction/default.yaml
 LAMA_CHECKPOINT_PATH=./pretrained_models/big-lama
-SD_MODEL_NAME=stabilityai/stable-diffusion-2-inpainting
 
-# API Configuration
-ENVIRONMENT=development
-API_HOST=0.0.0.0
-API_PORT=8000
-API_PREFIX=/api/v1
-DEBUG=true
-MAX_IMAGE_SIZE=1024
-MAX_FILE_SIZE=10485760
-
-# CORS
-ALLOWED_ORIGINS=*
-
-# Device (GPU)
-DEVICE=cuda
-
-# GPU Optimization
-TORCH_NUM_THREADS=4
-
-# Mock Service (disabled for GPU testing)
+# Environment Settings
 USE_MOCK_SERVICE=false
+DEVICE=cuda
+LOG_LEVEL=INFO
+
+# Performance Settings
+SAM_DEVICE=cuda
+LAMA_DEVICE=cuda
+STABLE_DIFFUSION_DEVICE=cuda
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
 """
     
-    with open('.env', 'w') as f:
-        f.write(env_content)
-    
-    print("✅ Environment file created")
-    return True
+    env_file_path = os.path.join(PROJECT_DIR, '.env')
+    try:
+        with open(env_file_path, 'w') as f:
+            f.write(env_content)
+        print("✅ Environment file created")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to create environment file: {e}")
+        return False
 
 def download_models():
     """Download AI models"""
     print("\n🤖 Downloading AI models...")
     
-    # Change to project directory
-    os.chdir('open-inpaint-anything')
+    if not PROJECT_DIR:
+        print("❌ Project directory not set!")
+        return False
     
     # Make scripts executable
-    run_command("chmod +x scripts/download_models.sh", "Making download script executable")
+    run_command("chmod +x scripts/download_models.sh", 
+                "Making download script executable", cwd=PROJECT_DIR)
     
     # Check if models already exist
-    if os.path.exists('pretrained_models/sam_vit_b_01ec64.pth'):
+    sam_model_path = os.path.join(PROJECT_DIR, 'pretrained_models/sam_vit_b_01ec64.pth')
+    if os.path.exists(sam_model_path):
         print("✅ SAM models already downloaded")
     else:
         print("📥 Downloading models (this may take 5-10 minutes)...")
-        success, _, _ = run_command("./scripts/download_models.sh", "Downloading models")
+        success, _, _ = run_command("./scripts/download_models.sh", 
+                                   "Downloading models", cwd=PROJECT_DIR)
         if not success:
             print("❌ Model download failed")
             return False
@@ -177,30 +192,30 @@ def verify_setup():
     """Verify the setup"""
     print("\n🔍 Verifying setup...")
     
-    # Change to project directory
-    os.chdir('open-inpaint-anything')
+    if not PROJECT_DIR:
+        print("❌ Project directory not set!")
+        return False
     
-    success, _, _ = run_command("python scripts/verify_models.py", "Verifying models")
+    success, _, _ = run_command("python scripts/verify_models.py", 
+                               "Verifying models", cwd=PROJECT_DIR)
     return success
 
 def start_server_test():
     """Start server for testing"""
     print("\n🚀 Starting FastAPI server test...")
     
-    # Change to project directory
-    os.chdir('open-inpaint-anything')
-    
-    # Start server in background
-    import threading
-    import subprocess
+    if not PROJECT_DIR:
+        print("❌ Project directory not set!")
+        return False
     
     def run_server():
+        """Run the FastAPI server"""
         subprocess.run([
             sys.executable, "-m", "uvicorn", 
             "api.main:app", 
             "--host", "0.0.0.0", 
             "--port", "8000"
-        ])
+        ], cwd=PROJECT_DIR)
     
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
@@ -282,26 +297,28 @@ def main():
         print("⚠️  Setup verification had issues, but continuing...")
     
     # Step 7: Test server
-    if start_server_test():
-        print("\n🎉 Setup completed successfully!")
-        print("=" * 60)
-        print("📋 Next steps:")
-        print("   1. Test the API endpoints")
-        print("   2. Run performance benchmarks")
-        print("   3. Compare with CPU results")
-        print("\n🔗 API Documentation: http://localhost:8000/docs")
-        
-        # Setup ngrok
-        setup_ngrok()
-        
-        return True
-    else:
-        print("\n❌ Setup completed but server test failed")
-        print("📋 Troubleshooting:")
+    if not start_server_test():
+        print("❌ Setup completed but server test failed")
+        print("🔧 Troubleshooting:")
         print("   1. Check server logs")
         print("   2. Verify model downloads")
         print("   3. Check GPU memory usage")
         return False
+    
+    # Step 8: Setup ngrok (optional)
+    setup_ngrok()
+    
+    print("\n🎉 Setup completed successfully!")
+    print("🔗 FastAPI server running at: http://localhost:8000")
+    print("📖 API documentation: http://localhost:8000/docs")
+    print(f"📁 Project directory: {PROJECT_DIR}")
+    
+    return True
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    if success:
+        print("\n✅ All done! You can now test the Inpaint Anything API.")
+    else:
+        print("\n❌ Setup failed. Please check the errors above.")
+        sys.exit(1)
