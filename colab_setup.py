@@ -94,22 +94,22 @@ def clone_repository():
     print("\n📁 Setting up project...")
     
     # Check if already cloned
-    if os.path.exists('Inpaint-Anything'):
+    if os.path.exists('open-inpaint-anything'):
         print("✅ Repository already exists")
-        run_command("cd Inpaint-Anything && git pull", "Updating repository")
+        run_command("cd open-inpaint-anything && git pull", "Updating repository")
     else:
-        # You'll need to replace this with your actual repository URL
-        repo_url = "https://github.com/hllj/Inpaint-Anything.git"
+        # Clone from our working repository with API implementation
+        repo_url = "https://github.com/flytothejy/open-inpaint-anything.git"
         success, _, _ = run_command(f"git clone {repo_url}", "Cloning repository")
         if not success:
             print("❌ Failed to clone repository")
             print("📝 Manual setup required:")
-            print("   1. Fork the original repository")
-            print("   2. Update the repo_url in this script")
+            print("   1. Check repository URL")
+            print("   2. Verify repository is public")
             return False
     
     # Change to project directory
-    os.chdir('Inpaint-Anything')
+    os.chdir('open-inpaint-anything')
     return True
 
 def create_colab_env():
